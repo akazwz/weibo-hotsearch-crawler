@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
+	"time"
+
 	"github.com/MontFerret/ferret/pkg/compiler"
 	"github.com/MontFerret/ferret/pkg/drivers"
 	"github.com/MontFerret/ferret/pkg/drivers/cdp"
@@ -12,8 +15,6 @@ import (
 	"github.com/akazwz/weibo-hotsearch-crawler/initialize"
 	"github.com/akazwz/weibo-hotsearch-crawler/utils/influx"
 	"github.com/robfig/cron/v3"
-	"log"
-	"time"
 )
 
 func main() {
@@ -34,27 +35,18 @@ func main() {
 		t := time.Now()
 		hotSearches := getHotSearch()
 		for _, search := range hotSearches {
-			fmt.Println(fmt.Sprintf("%d %s %s %d %s",
-				search.Rank,
-				search.Content,
-				search.Link,
-				search.Hot,
-				search.Tag,
-			))
 			tags := map[string]string{}
 			fields := map[string]interface{}{}
-
 			tags["rank"] = fmt.Sprintf("%02d", search.Rank)
 			fields["content"] = search.Content
 			fields["link"] = search.Link
 			fields["hot"] = search.Hot
 			fields["tag"] = search.Tag
 
-			err = influx.Write("hot_search", tags, fields, t)
+			err = influx.Write("new_hot_search", tags, fields, t)
 			if err != nil {
 				log.Fatal("influx error:", err)
 			}
-			log.Println(t)
 		}
 	})
 	if err != nil {
