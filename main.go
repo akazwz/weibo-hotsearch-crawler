@@ -8,22 +8,61 @@ import (
 	"github.com/MontFerret/ferret/pkg/drivers"
 	"github.com/MontFerret/ferret/pkg/drivers/cdp"
 	"github.com/MontFerret/ferret/pkg/drivers/http"
+	"github.com/akazwz/weibo-hotsearch-crawler/global"
+	"github.com/akazwz/weibo-hotsearch-crawler/initialize"
+	"github.com/akazwz/weibo-hotsearch-crawler/utils/influx"
+	"github.com/robfig/cron/v3"
 	"log"
+	"time"
 )
 
 func main() {
 	fmt.Println("start to crawl")
-	hotSearches := getHotSearch()
 
-	for _, search := range hotSearches {
-		fmt.Println(fmt.Sprintf("%d %s %s %d %s",
-			search.Rank,
-			search.Content,
-			search.Link,
-			search.Hot,
-			search.Tag,
-		))
+	global.VP = initialize.InitViper()
+	if global.VP == nil {
+		fmt.Println("配置文件初始化失败")
 	}
+
+	location, err := time.LoadLocation("Asia/Shanghai")
+	if err != nil {
+		log.Fatal("时区加载失败")
+	}
+
+	c := cron.New(cron.WithLocation(location))
+	_, err = c.AddFunc("* * * * * ", func() {
+		t := time.Now()
+		hotSearches := getHotSearch()
+		for _, search := range hotSearches {
+			fmt.Println(fmt.Sprintf("%d %s %s %d %s",
+				search.Rank,
+				search.Content,
+				search.Link,
+				search.Hot,
+				search.Tag,
+			))
+			tags := map[string]string{}
+			fields := map[string]interface{}{}
+
+			tags["rank"] = fmt.Sprintf("%02d", search.Rank)
+			fields["content"] = search.Content
+			fields["link"] = search.Link
+			fields["hot"] = search.Hot
+			fields["tag"] = search.Tag
+
+			err = influx.Write("hot_search", tags, fields, t)
+			if err != nil {
+				log.Fatal("influx error:", err)
+			}
+			log.Println(t)
+		}
+	})
+	if err != nil {
+		log.Fatal("定时任务添加失败", err)
+	}
+	c.Run()
+	c.Start()
+
 }
 
 type HotSearch struct {
@@ -50,8 +89,6 @@ func getHotSearch() []*HotSearch {
 					LET hot = TO_INT(el[1][1].innerText)
 					LET tag = el[2].innerText
 
-					
-
 					RETURN {
 						rank: rank, 
 						content: content,
@@ -72,9 +109,7 @@ func getHotSearch() []*HotSearch {
 		log.Fatal("compile error")
 	}
 
-	// create a root context
 	ctx := context.Background()
-
 	ctx = drivers.WithContext(ctx, cdp.NewDriver())
 	ctx = drivers.WithContext(ctx, http.NewDriver(), drivers.AsDefault())
 
