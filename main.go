@@ -4,57 +4,69 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
-	"time"
-
 	"github.com/MontFerret/ferret/pkg/compiler"
 	"github.com/MontFerret/ferret/pkg/drivers"
 	"github.com/MontFerret/ferret/pkg/drivers/cdp"
 	"github.com/MontFerret/ferret/pkg/drivers/http"
-	"github.com/akazwz/weibo-hotsearch-crawler/global"
-	"github.com/akazwz/weibo-hotsearch-crawler/initialize"
-	"github.com/akazwz/weibo-hotsearch-crawler/utils/influx"
-	"github.com/robfig/cron/v3"
+	"github.com/chromedp/cdproto/page"
+	"github.com/chromedp/chromedp"
+	"log"
+	"time"
 )
 
 func main() {
 	fmt.Println("start to crawl")
-
-	global.VP = initialize.InitViper()
-	if global.VP == nil {
-		fmt.Println("配置文件初始化失败")
-	}
-
-	location, err := time.LoadLocation("Asia/Shanghai")
+	generatePDF(fmt.Sprintf("%s", time.Now().Format("2006-01-02-15-04-05")))
+	/*location, err := time.LoadLocation("Asia/Shanghai")
 	if err != nil {
 		log.Fatal("时区加载失败")
 	}
 
 	c := cron.New(cron.WithLocation(location))
 	_, err = c.AddFunc("* * * * * ", func() {
-		t := time.Now()
-		hotSearches := getHotSearch()
-		for _, search := range hotSearches {
-			tags := map[string]string{}
-			fields := map[string]interface{}{}
-			tags["rank"] = fmt.Sprintf("%02d", search.Rank)
-			fields["content"] = search.Content
-			fields["link"] = search.Link
-			fields["hot"] = search.Hot
-			fields["tag"] = search.Tag
-
-			err = influx.Write("new_hot_search", tags, fields, t)
-			if err != nil {
-				log.Fatal("influx error:", err)
-			}
-		}
+		generatePDF(fmt.Sprintf("%s", time.Now().Format("2006-01-02-15-04-05")))
 	})
 	if err != nil {
 		log.Fatal("定时任务添加失败", err)
 	}
 	c.Run()
-	c.Start()
+	c.Start()*/
+}
 
+func generatePDF(pre string) {
+	ctx, cancel := chromedp.NewExecAllocator(context.Background(), append(
+		chromedp.DefaultExecAllocatorOptions[:],
+		chromedp.Flag("headless", false),
+	)...)
+	ctx, cancel = chromedp.NewContext(ctx)
+	defer cancel()
+
+	// capture pdf
+	var outerBefore string
+	if err := chromedp.Run(ctx,
+		chromedp.Navigate(`https://s.weibo.com/top/summary?cate=realtimehot`),
+		chromedp.Sleep(10*time.Second),
+		chromedp.OuterHTML("#pl_top_realtimehot", &outerBefore),
+	); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(outerBefore)
+}
+
+func printToPDF(urlstr string, res *[]byte) chromedp.Tasks {
+
+	return chromedp.Tasks{
+
+		chromedp.ActionFunc(func(ctx context.Context) error {
+
+			buf, _, err := page.PrintToPDF().WithPrintBackground(false).Do(ctx)
+			if err != nil {
+				return err
+			}
+			*res = buf
+			return nil
+		}),
+	}
 }
 
 type HotSearch struct {
@@ -69,7 +81,7 @@ func getHotSearch() []*HotSearch {
 	query := `
 			LET doc = DOCUMENT("https://s.weibo.com/top/summary?cate=realtimehot", {driver: "cdp"})
 
-			WAIT_NAVIGATION(doc, 20000)
+			WAIT_NAVIGATION(doc, 7000)
 
 			LET data = ELEMENTS(doc, "div#pl_top_realtimehot > table > tbody > tr")
 			LET realData = (
