@@ -69,7 +69,7 @@ func getHotSearch() []*HotSearch {
 	query := `
 			LET doc = DOCUMENT("https://s.weibo.com/top/summary?cate=realtimehot", {driver: "cdp"})
 
-			WAIT_NAVIGATION(doc, 10000)
+			WAIT_NAVIGATION(doc, 20000)
 
 			LET data = ELEMENTS(doc, "div#pl_top_realtimehot > table > tbody > tr")
 			LET realData = (
