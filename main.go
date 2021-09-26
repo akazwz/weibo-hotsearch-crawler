@@ -48,8 +48,10 @@ func crawlHotSearch(t time.Time) {
 		chromedp.DefaultExecAllocatorOptions[:],
 		chromedp.Flag("headless", true),
 	)...)
-	ctx, cancel = chromedp.NewContext(ctx)
+	defer cancel()
+
 	ctx, cancel = context.WithTimeout(ctx, 30*time.Second)
+	ctx, cancel = chromedp.NewContext(ctx)
 	defer cancel()
 
 	//var buf []byte
