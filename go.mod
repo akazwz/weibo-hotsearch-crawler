@@ -4,6 +4,7 @@ go 1.16
 
 require (
 	github.com/MontFerret/ferret v0.15.0
+	github.com/PuerkitoBio/goquery v1.7.1 // indirect
 	github.com/andybalholm/cascadia v1.2.0 // indirect
 	github.com/chromedp/cdproto v0.0.0-20210921215903-b0b4414ddbe0
 	github.com/chromedp/chromedp v0.7.4
