@@ -44,10 +44,7 @@ func main() {
 }
 
 func crawlHotSearch(t time.Time) {
-	ctx, cancel := chromedp.NewExecAllocator(context.Background(), append(
-		chromedp.DefaultExecAllocatorOptions[:],
-		chromedp.Flag("headless", true),
-	)...)
+	ctx, cancel := chromedp.NewRemoteAllocator(context.Background(), "ws://127.0.0.1:9222/")
 	defer cancel()
 
 	ctx, cancel = context.WithTimeout(ctx, 30*time.Second)
