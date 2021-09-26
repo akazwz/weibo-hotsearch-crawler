@@ -122,10 +122,9 @@ func getHtmlContent(url string, html *string) chromedp.Tasks {
 	return chromedp.Tasks{
 		chromedp.Navigate(url),
 		// 等待热搜内容加载完毕
-		chromedp.WaitReady("div#pl_top_realtimehot", chromedp.ByQuery),
-		chromedp.WaitVisible("div#pl_top_realtimehot", chromedp.ByQuery),
+		chromedp.WaitVisible("#pl_top_realtimehot", chromedp.ByQuery),
 		// 获取热搜数据html
-		chromedp.OuterHTML("div#pl_top_realtimehot", html, chromedp.ByQuery),
+		chromedp.OuterHTML("#pl_top_realtimehot", html, chromedp.ByQuery),
 	}
 }
 
