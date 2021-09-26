@@ -4,8 +4,12 @@ import (
 	"context"
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
+	"github.com/akazwz/weibo-hotsearch-crawler/global"
+	"github.com/akazwz/weibo-hotsearch-crawler/initialize"
+	"github.com/akazwz/weibo-hotsearch-crawler/utils/influx"
 	"github.com/chromedp/cdproto/page"
 	"github.com/chromedp/chromedp"
+	"github.com/robfig/cron/v3"
 	"log"
 	"strconv"
 	"strings"
@@ -14,24 +18,32 @@ import (
 
 func main() {
 	fmt.Println("start to crawl")
-	generatePDF(fmt.Sprintf("%s", time.Now().Format("2006-01-02-15-04-05")))
-	/*location, err := time.LoadLocation("Asia/Shanghai")
+
+	global.VP = initialize.InitViper()
+	if global.VP == nil {
+		fmt.Println("配置文件初始化失败")
+	}
+
+	//generatePDF(fmt.Sprintf("%s", time.Now().Format("2006-01-02-15-04-05")))
+	location, err := time.LoadLocation("Asia/Shanghai")
 	if err != nil {
 		log.Fatal("时区加载失败")
 	}
 
+	// 开启定时任务
 	c := cron.New(cron.WithLocation(location))
 	_, err = c.AddFunc("* * * * * ", func() {
-		generatePDF(fmt.Sprintf("%s", time.Now().Format("2006-01-02-15-04-05")))
+		crawlHotSearch(time.Now())
 	})
+
 	if err != nil {
 		log.Fatal("定时任务添加失败", err)
 	}
 	c.Run()
-	c.Start()*/
+	c.Start()
 }
 
-func generatePDF(pre string) {
+func crawlHotSearch(t time.Time) {
 	ctx, cancel := chromedp.NewExecAllocator(context.Background(), append(
 		chromedp.DefaultExecAllocatorOptions[:],
 		chromedp.Flag("headless", true),
@@ -47,15 +59,15 @@ func generatePDF(pre string) {
 		//printToPDF(`https://s.weibo.com/top/summary?cate=realtimehot`, &buf),
 		getHtmlContent(`https://s.weibo.com/top/summary?cate=realtimehot`, &htmlContent),
 	); err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
 	/*if err := ioutil.WriteFile("sample.pdf", buf, 0644); err != nil {
 		log.Fatal(err)
 	}*/
-	getHotSearchData(htmlContent)
+	getHotSearchData(htmlContent, t)
 }
 
-func getHotSearchData(htmlContent string) {
+func getHotSearchData(htmlContent string, t time.Time) {
 	dom, err := goquery.NewDocumentFromReader(strings.NewReader(htmlContent))
 	if err != nil {
 		log.Println("new dom error")
@@ -89,13 +101,20 @@ func getHotSearchData(htmlContent string) {
 			hot = strings.TrimSpace(hotAndTagArr[1])
 			tag = strings.TrimSpace(hotAndTagArr[0])
 		}
-		fmt.Println("rank:" + rank)
-		fmt.Println("content:" + content)
-		fmt.Println("link:" + link)
-		fmt.Println("hot:" + hot)
-		fmt.Println("tag：" + tag)
-		fmt.Println("icon：" + icon)
-		fmt.Println("------------------------------")
+
+		tags := map[string]string{}
+		fields := map[string]interface{}{}
+		tags["rank"] = rank
+		fields["content"] = content
+		fields["link"] = link
+		fields["hot"] = hot
+		fields["tag"] = tag
+		fields["icon"] = icon
+
+		err = influx.Write("new-hot", tags, fields, t)
+		if err != nil {
+			log.Println("influx error:", err)
+		}
 	})
 }
 
@@ -103,9 +122,10 @@ func getHtmlContent(url string, html *string) chromedp.Tasks {
 	return chromedp.Tasks{
 		chromedp.Navigate(url),
 		// 等待热搜内容加载完毕
-		chromedp.WaitReady("#pl_top_realtimehot", chromedp.ByQuery),
+		chromedp.WaitReady("div#pl_top_realtimehot", chromedp.ByQuery),
+		chromedp.WaitVisible("div#pl_top_realtimehot", chromedp.ByQuery),
 		// 获取热搜数据html
-		chromedp.OuterHTML("#pl_top_realtimehot", html),
+		chromedp.OuterHTML("div#pl_top_realtimehot", html, chromedp.ByQuery),
 	}
 }
 
