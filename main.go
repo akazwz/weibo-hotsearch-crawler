@@ -7,9 +7,9 @@ import (
 	"github.com/akazwz/weibo-hotsearch-crawler/global"
 	"github.com/akazwz/weibo-hotsearch-crawler/initialize"
 	"github.com/akazwz/weibo-hotsearch-crawler/utils/influx"
+	"github.com/akazwz/weibo-hotsearch-crawler/utils/notify"
 	"github.com/chromedp/cdproto/page"
 	"github.com/chromedp/chromedp"
-	"github.com/robfig/cron/v3"
 	"log"
 	"strconv"
 	"strings"
@@ -24,7 +24,9 @@ func main() {
 		fmt.Println("配置文件初始化失败")
 	}
 
-	//generatePDF(fmt.Sprintf("%s", time.Now().Format("2006-01-02-15-04-05")))
+	notify.SendVerifyMessage("15153953308", "333333")
+
+	/*//generatePDF(fmt.Sprintf("%s", time.Now().Format("2006-01-02-15-04-05")))
 	location, err := time.LoadLocation("Asia/Shanghai")
 	if err != nil {
 		log.Fatal("时区加载失败")
@@ -40,7 +42,7 @@ func main() {
 		log.Fatal("定时任务添加失败", err)
 	}
 	c.Run()
-	c.Start()
+	c.Start()*/
 }
 
 func crawlHotSearch(t time.Time) {
