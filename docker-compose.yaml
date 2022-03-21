@@ -1,0 +1,15 @@
+version: "3"
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile-app
+
+  browser:
+    build:
+      context: .
+      dockerfile: Dockerfile-browser
+    ports:
+      - "9223:9223"
+
+

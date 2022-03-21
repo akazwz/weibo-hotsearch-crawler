@@ -1,18 +1,19 @@
 package influx
 
 import (
-	"github.com/akazwz/weibo-hotsearch-crawler/global"
+	"os"
+	"time"
+
 	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
 	"github.com/influxdata/influxdb-client-go/v2/api/http"
-	"time"
 )
 
 func Write(measurement string, tags map[string]string, fields map[string]interface{}, t time.Time) (err error) {
-	client := influxdb2.NewClient(global.CFG.URL, global.CFG.Token)
+	client := influxdb2.NewClient(os.Getenv("INFLUXDB_URL"), os.Getenv("INFLUXDB_TOKEN"))
 	// always close client at the end
 	defer client.Close()
 	p := influxdb2.NewPoint(measurement, tags, fields, t)
-	writeApi := client.WriteAPI(global.CFG.Org, global.CFG.Bucket)
+	writeApi := client.WriteAPI(os.Getenv("INFLUXDB_ORG"), os.Getenv("INFLUXDB_BUCKET"))
 	writeApi.WritePoint(p)
 	writeApi.Flush()
 	writeApi.SetWriteFailedCallback(func(batch string, error http.Error, retryAttempts uint) bool {

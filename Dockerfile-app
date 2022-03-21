@@ -1,0 +1,12 @@
+FROM golang:1.18.0-alpine AS devlopement
+MAINTAINER akazwz
+WORKDIR /home/crawler
+ADD . /home/crawler
+ENV GOPROXY=https://goproxy.cn,direct
+RUN go mod tidy
+RUN go build -o app -buildvcs=false
+
+FROM alpine:latest AS production
+WORKDIR /root/
+COPY --from=devlopement /home/crawler/app .
+ENTRYPOINT ["./app"]

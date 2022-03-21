@@ -3,38 +3,35 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/PuerkitoBio/goquery"
-	"github.com/akazwz/weibo-hotsearch-crawler/global"
-	"github.com/akazwz/weibo-hotsearch-crawler/initialize"
-	"github.com/akazwz/weibo-hotsearch-crawler/utils/influx"
-	"github.com/akazwz/weibo-hotsearch-crawler/utils/notify"
-	"github.com/chromedp/cdproto/page"
-	"github.com/chromedp/chromedp"
 	"log"
+	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/PuerkitoBio/goquery"
+	"github.com/chromedp/cdproto/page"
+	"github.com/chromedp/chromedp"
+	"github.com/joho/godotenv"
+	"github.com/robfig/cron/v3"
 )
 
 func main() {
 	fmt.Println("start to crawl")
 
-	global.VP = initialize.InitViper()
-	if global.VP == nil {
-		fmt.Println("配置文件初始化失败")
+	if os.Getenv("MODE") == "dev" {
+		err := godotenv.Load()
+		if err != nil {
+			log.Fatal("Error loading .env file")
+		}
 	}
 
-	notify.SendVerifyMessage("15153953308", "333333")
-
-	/*//generatePDF(fmt.Sprintf("%s", time.Now().Format("2006-01-02-15-04-05")))
-	location, err := time.LoadLocation("Asia/Shanghai")
-	if err != nil {
-		log.Fatal("时区加载失败")
-	}
+	//generatePDF(fmt.Sprintf("%s", time.Now().Format("2006-01-02-15-04-05")))
+	var cstZone = time.FixedZone("CST", 8*3600)
 
 	// 开启定时任务
-	c := cron.New(cron.WithLocation(location))
-	_, err = c.AddFunc("* * * * * ", func() {
+	c := cron.New(cron.WithLocation(cstZone))
+	_, err := c.AddFunc("* * * * * ", func() {
 		crawlHotSearch(time.Now())
 	})
 
@@ -42,11 +39,12 @@ func main() {
 		log.Fatal("定时任务添加失败", err)
 	}
 	c.Run()
-	c.Start()*/
+	c.Start()
 }
 
 func crawlHotSearch(t time.Time) {
-	ctx, cancel := chromedp.NewRemoteAllocator(context.Background(), "ws://127.0.0.1:9222/")
+	ctx, cancel := chromedp.NewRemoteAllocator(context.Background(), "ws://browser:9222/")
+	//ctx, cancel := chromedp.NewContext(context.Background())
 	defer cancel()
 
 	ctx, cancel = context.WithTimeout(ctx, 30*time.Second)
@@ -112,10 +110,13 @@ func getHotSearchData(htmlContent string, t time.Time) {
 		fields["tag"] = tag
 		fields["icon"] = icon
 
-		err = influx.Write("new-hot", tags, fields, t)
+		log.Println(tags)
+		log.Println(fields)
+
+		/*err = influx.Write("new-hot", tags, fields, t)
 		if err != nil {
 			log.Println("influx error:", err)
-		}
+		}*/
 	})
 }
 
